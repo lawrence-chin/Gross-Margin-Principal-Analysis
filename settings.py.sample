@@ -1,0 +1,40 @@
+# THIS IS A SAMPLE SETTINGS.PY FILE. TO USE:
+# 1. Remove .sample
+# 2. Add in Credentials to SNOWFLAKE
+# 3. Change desired OUTPUT_FILE_PATH
+# This is intended to be a sample, as committing creds to github is a big nono
+
+SNOWFLAKE = {
+    'usr' :'USERNAME',
+    'pwd' : 'PASSWORD',
+    'role' : 'ROLE',
+    'warehouse_name' : 'WAREHOUSE'
+}
+
+market_crosswalk = {
+    'Los Angeles' : 'Southern California',
+    'Miami':'South Florida',
+    'Chicago':'Midwest',
+    'Boston':'New England',
+    'Atlanta':'Greater Atlanta Area',
+    'Philadelphia':'Greater Philadelphia Area',
+    'Greater New York': ['New York Metro Area','The Hamptons'],
+    'San Diego':'Greater San Diego',
+    'San Francisco':'San Francisco Bay Area',
+    'Nashville':'Greater Nashville Area',
+    'Washington DC': 'Washington, DC Area',
+    'Texas':['Greater Dallas','Greater Houston Area','Greater Austin Area'],
+    'Seattle':'Greater Seattle Area',
+    'Colorado':'Colorado',
+    'Hawaii':'Hawaii'
+}
+
+
+cohort_mix_dict = {
+    'Total Principal Cohorts': 'all' ,
+    '2018 and Prior': ['<','2019-01-01'],
+    'Jan 2019 to Aug 2019':[['>','2019-01-01'],['<','2019-09-01']] ,
+    'Sept 2019 to Aug 2020':[['>','2019-09-01'],['<','2020-09-01']] 
+}
+
+output_file_path = 'DESIRED_OUTPUT_PATH'
