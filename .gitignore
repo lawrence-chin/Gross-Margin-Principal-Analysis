@@ -1,3 +1,4 @@
 *.ipynb
-settings.py
+params.py
 */.ipynb_checkpoints
+*.xlsx

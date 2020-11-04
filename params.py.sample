@@ -1,15 +1,9 @@
-# THIS IS A SAMPLE SETTINGS.PY FILE. TO USE:
+# THIS IS A SAMPLE PARAMS.PY FILE. TO USE:
 # 1. Remove .sample
-# 2. Add in Credentials to SNOWFLAKE
-# 3. Change desired OUTPUT_FILE_PATH
-# This is intended to be a sample, as committing creds to github is a big nono
+# 2. SNOWFLAKE and OUTPUT_FILE_PATH are stored in site-packages/settings, 
+# but can be left in params.py if imports and refernces are changed
 
-SNOWFLAKE = {
-    'usr' :'USERNAME',
-    'pwd' : 'PASSWORD',
-    'role' : 'ROLE',
-    'warehouse_name' : 'WAREHOUSE'
-}
+# This is intended to be a sample, as committing creds to github is a big nono
 
 market_crosswalk = {
     'Los Angeles' : 'Southern California',
@@ -35,6 +29,16 @@ cohort_mix_dict = {
     '2018 and Prior': ['<','2019-01-01'],
     'Jan 2019 to Aug 2019':[['>','2019-01-01'],['<','2019-09-01']] ,
     'Sept 2019 to Aug 2020':[['>','2019-09-01'],['<','2020-09-01']] 
+}
+
+
+#############THIS SHOULD BE STORED IN SITE-PACKAGES#################
+
+SNOWFLAKE = {
+    'usr' :'USERNAME',
+    'pwd' : 'PASSWORD',
+    'role' : 'ROLE',
+    'warehouse_name' : 'WAREHOUSE'
 }
 
 output_file_path = 'DESIRED_OUTPUT_PATH'

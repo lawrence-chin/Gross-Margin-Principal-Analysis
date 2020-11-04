@@ -1,4 +1,4 @@
-import settings
+import params
 import pandas as pd
 import numpy as np
 
@@ -6,8 +6,8 @@ def get_transforms(extract_dict):
     acct_data = extract_dict['transaction_data'].copy()
     aep_data = extract_dict['aep_data'].copy()
     ica_data = extract_dict['ica_data'].copy()
-    market_crosswalk = settings.market_crosswalk
-    cohort_mix_dict = settings.cohort_mix_dict
+    market_crosswalk = params.market_crosswalk
+    cohort_mix_dict = params.cohort_mix_dict
 
     #Raw data adjustemnts
     ica_data.loc[ica_data['Number of Agents']==0, 'Number of Agents'] = 1
@@ -52,26 +52,31 @@ def get_transforms(extract_dict):
     detail_df['NCD_and_AEP_TOTAL'] = detail_df['NET_COMPANY_DOLLAR'] + detail_df['AEP_TOTAL']
     detail_df['ENDING_YEAR'] = detail_df['ENDING_PERIOD'].dt.year.astype(str)
 
+    #FILL NA 'tmp' for STRING COLS ELSE 0 if boolean, integer, unicode, float, and complex
+    detail_df = detail_df.apply(lambda x: x.fillna(0) if x.dtype.kind in 'biufc' else x.fillna('tmp'))
+
     #Summary Build
     #tmp fillna to allow groupby
-    grp = detail_df.fillna('tmp').groupby(['Compass Team ID',
+    grp = detail_df.groupby(['Compass Team ID',
                             'Account Team Name',
                             'ENDING_YEAR',
                             'MARKET_REGION',
+                            'LOCATION_NAME',
+                            'LISTING_TYPE',
                             'Market','Original Start Date']).agg({'COMPASS_DEALS_ID':'nunique',
                                                 'COMMISSION_EXPENSE':sum,
                                                 'GCI_LESS_REFERRAL':sum,
                                                 'NET_COMPANY_DOLLAR':sum,
                                                 'AEP_TOTAL':sum}).reset_index()
 
-    grp['NCD_MARGIN'] = grp['NET_COMPANY_DOLLAR'] / grp['GCI_LESS_REFERRAL']
+    grp['NCD_MARGIN'] = np.where(grp['GCI_LESS_REFERRAL']!=0, grp['NET_COMPANY_DOLLAR'] / grp['GCI_LESS_REFERRAL'], 0)
 
     piv = grp.pivot_table(values=['COMPASS_DEALS_ID',
                                 'NCD_MARGIN',
                                 'GCI_LESS_REFERRAL',
                                 'COMMISSION_EXPENSE',
                                 'NET_COMPANY_DOLLAR',
-                                'AEP_TOTAL'],index=['Compass Team ID','Account Team Name','MARKET_REGION','Market','Original Start Date'],columns=['ENDING_YEAR'])
+                                'AEP_TOTAL'],index=['Compass Team ID','Account Team Name','MARKET_REGION','LOCATION_NAME','LISTING_TYPE','Market','Original Start Date'],columns=['ENDING_YEAR'])
 
     piv.columns = ['_'.join(col).strip() for col in piv.columns.values]
 
@@ -103,7 +108,7 @@ def get_transforms(extract_dict):
 
     def get_cohort_totals(df, cohort_name, total_df = None):
         mkt_reg = df['MARKET_REGION'].iloc[0]
-        cohort_df = df.groupby('MARKET_REGION').agg({'NUM_PRODUCING_PRINCIPALS_2019':sum,
+        cohort_df = df.groupby(['MARKET_REGION','Market','LOCATION_NAME','Compass Team ID','Account Team Name','LISTING_TYPE']).agg({'NUM_PRODUCING_PRINCIPALS_2019':sum,
                                                         'NUM_PRODUCING_PRINCIPALS_2020':sum,
                                                         'COMPASS_DEALS_ID_2019':sum, 
                                                         'COMPASS_DEALS_ID_2020':sum,

@@ -1,13 +1,10 @@
-import settings
-from functional_functions import get_snowflake_connection
+from functional_functions import get_snowflake_connection, query_snowflake
 from datetime import datetime as dt
 
 def get_acct_transaction_data(begin_date, end_date):
-
-    conn = get_snowflake_connection(**settings.SNOWFLAKE)
         
     print('Running now ' + str(dt.now()))
-    full_query = conn.cursor().execute("""select tb1.Market_Region,
+    full_query = query_snowflake("""select tb1.Market_Region,
     tb1.Side_Represented,
     tb1.Compass_Deals_Id,
     tb1.Listing_Type,
@@ -49,10 +46,12 @@ def get_acct_transaction_data(begin_date, end_date):
     tb1.Gross_Commission_Revenue__Commission_RevenueMIA_400099,
     tb1.Gross_Commission_Revenue__RefundsAllowances_401002,
     tb1.Gross_Commission_Revenue__Client_Pass_Through_401003,
-    tb1.Gross_Commission_Revenue__Renewals_401004
+    tb1.Gross_Commission_Revenue__Renewals_401004,
+    Ancillary_Revenue__Ancillary_Revenue_430001,
+    Ancillary_Revenue__E_and_O_Billing_Income_430006,
+    Ancillary_Revenue__Discounted_Vendor_Service_Program_430009
     From
-    (select a.Market_Region,
-    -- This was done to break out Texas for a few areas CASE WHEN a.Market_Region='Texas' THEN SPLIT_PART(a.Location_Name,',',0) ELSE a.Market_Region END as Market_Region,
+    (select CASE WHEN a.Market_Region='Texas' THEN SPLIT_PART(a.Location_Name,',',0) ELSE a.Market_Region END as Market_Region,
     a.Side_Represented,
     CAST(CAST(COALESCE(a.Compass_Deals_Id,a.Compass_Deal_Id_Line_Id) as INTEGER) as STRING) as Compass_Deals_Id,
     a.Listing_Type,
@@ -94,7 +93,6 @@ def get_acct_transaction_data(begin_date, end_date):
     Sum(Case When  a.account_number = '401001' Then a.amount Else 0 End) as Gross_Commission_Revenue__Credits_Discounts_from_Commission_401001,
     Sum(Case When  a.account_number = '410001' Then a.amount Else 0 End) as Referral_Revenue__External_Referral_Revenue_410001,
     Sum(Case When  a.account_number = '411001' Then a.amount Else 0 End) as Referral_Revenue__Internal_Referral_Revenue_411001,
-    Sum(Case When  a.account_number = '430003' Then a.amount Else 0 End) as Ancillary_Revenue__Admin__Resource_Fees_430003,
     Sum(Case When  a.account_number = '502001' Then a.amount Else 0 End) as Commissions_and_other_transaction_related_costs_COGS__Commission_Expense_502001,
     Sum(Case When  a.account_number = '502006' Then a.amount Else 0 End) as Commissions_and_other_transaction_related_costs_COGS__Commission_Expense__Agent_Equity_Program_502006,
     Sum(Case When  a.account_number = '503001' Then a.amount Else 0 End) as Commissions_and_other_transaction_related_costs_COGS__ProductionBased_Bonus_503001,
@@ -109,7 +107,11 @@ def get_acct_transaction_data(begin_date, end_date):
     Sum(Case When  a.account_number = '400099' Then a.amount Else 0 End) as Gross_Commission_Revenue__Commission_RevenueMIA_400099,
     Sum(Case When  a.account_number = '401002' Then a.amount Else 0 End) as Gross_Commission_Revenue__RefundsAllowances_401002,
     Sum(Case When  a.account_number = '401003' Then a.amount Else 0 End) as Gross_Commission_Revenue__Client_Pass_Through_401003,
-    Sum(Case When  a.account_number = '401004' Then a.amount Else 0 End) as Gross_Commission_Revenue__Renewals_401004
+    Sum(Case When  a.account_number = '401004' Then a.amount Else 0 End) as Gross_Commission_Revenue__Renewals_401004,
+    Sum(Case When  a.account_number = '430001' Then a.amount Else 0 End) as Ancillary_Revenue__Ancillary_Revenue_430001,
+    Sum(Case When  a.account_number = '430003' Then a.amount Else 0 End) as Ancillary_Revenue__Admin__Resource_Fees_430003,
+    Sum(Case When  a.account_number = '430006' Then a.amount Else 0 End) as Ancillary_Revenue__E_and_O_Billing_Income_430006,
+    Sum(Case When  a.account_number = '430009' Then a.amount Else 0 End) as Ancillary_Revenue__Discounted_Vendor_Service_Program_430009
     from "PC_STITCH_DB"."NETSUITE_ANALYTICS"."VIEW_ACCOUNTING_TRANSACTION_LINES" a 
     Where 
         a.Ending_Period between to_Date('{b}','mm-dd-yyyy') AND to_Date('{e}','mm-dd-yyyy')
@@ -162,19 +164,21 @@ def get_acct_transaction_data(begin_date, end_date):
     tb1.Gross_Commission_Revenue__Commission_RevenueMIA_400099,
     tb1.Gross_Commission_Revenue__RefundsAllowances_401002,
     tb1.Gross_Commission_Revenue__Client_Pass_Through_401003,
-    tb1.Gross_Commission_Revenue__Renewals_401004;""".format(b=begin_date,e=end_date)).fetch_pandas_all()
+    tb1.Gross_Commission_Revenue__Renewals_401004,
+    Ancillary_Revenue__Ancillary_Revenue_430001,
+    Ancillary_Revenue__E_and_O_Billing_Income_430006,
+    Ancillary_Revenue__Discounted_Vendor_Service_Program_430009;""".format(b=begin_date,e=end_date))
     print('finish...' + str(dt.now()))
-
-    conn.close()
+    
     return full_query
 
 
 def get_aep_data():
 
-    conn = get_snowflake_connection(**settings.SNOWFLAKE)
+   
 
     print('Running now ' + str(dt.now()))
-    all_df = conn.cursor().execute("""select
+    all_df = query_snowflake("""select
         COALESCE(A.COMPASS_DEALS_ID, A.COMPASS_DEAL_ID_LINE_ID) as COMPASS_DEALS_ID,
         A.COMPASS_TEAM_ID,
         A.ENDING_PERIOD,
@@ -187,19 +191,17 @@ def get_aep_data():
     WHERE
         A.ENDING_PERIOD BETWEEN '2019-01-01' AND '2020-08-31'
         AND A.COMPASS_ITEM_TYPE_NAME='AEP'
-        AND A.ACCOUNT_NUMBER=502001;""").fetch_pandas_all()
+        AND A.ACCOUNT_NUMBER=502001;""")
     print('finish...' + str(dt.now()))
-
-    conn.close()
 
     return all_df
 
 def get_ica_data():
     
-    conn = get_snowflake_connection(**settings.SNOWFLAKE)
+   
 
     print('Running now ' + str(dt.now()))
-    ica_details = conn.cursor().execute("""
+    ica_details = query_snowflake("""
     SELECT 
         "Compass Agent ID",
         "Compass Team ID",
@@ -218,7 +220,8 @@ def get_ica_data():
         "Current Contract End Date",
         "ICA Expiration Date",
         "Separation Date",
-        "Separated From Compass"
+        "Separated From Compass",
+        "Opportunity GCI"
     FROM
     "PC_STITCH_DB"."ET_DEVELOPMENT"."VIEW_AGENT_ICA_HISTORY"
     WHERE 
@@ -226,10 +229,8 @@ def get_ica_data():
         AND "Primary Principal Flag" = 'Y'
         AND "Original Start Date" IS NOT NULL
         AND "Parent Account Name" NOT IN ('Pacific Union','Pacific Union International','Paragon','Alain Pinel Realtors')
-    """).fetch_pandas_all()
+    """)
     print('finish...' + str(dt.now()))
-
-    conn.close()
 
     return ica_details
 
