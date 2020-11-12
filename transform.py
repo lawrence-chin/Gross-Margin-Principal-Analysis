@@ -6,12 +6,31 @@ def get_transforms(extract_dict):
     acct_data = extract_dict['transaction_data'].copy()
     aep_data = extract_dict['aep_data'].copy()
     ica_data = extract_dict['ica_data'].copy()
+    af_data = extract_dict['af_data'].copy()
     market_crosswalk = params.market_crosswalk
     cohort_mix_dict = params.cohort_mix_dict
 
     #Raw data adjustemnts
     ica_data.loc[ica_data['Number of Agents']==0, 'Number of Agents'] = 1
     acct_data['LOCATION_NAME'].fillna("tmp",inplace=True)
+
+    #Admin Fees Data adjustments
+    af_data = af_data.apply(lambda x: x.fillna(0) if x.dtype.kind in 'biufc' else x.fillna('tmp'))
+
+    cols = af_data.columns.tolist()
+    cols.remove('AMOUNT')
+    cols.remove('ITEM_ID')
+    cols.remove('ITEM_NAME')
+
+    #SUMS with account number for adjustments
+    afdf_sums = af_data.groupby(cols)['AMOUNT'].sum().reset_index()
+    afdf_sums.rename(columns={'AMOUNT':'FLAT_FEES_ISOLATED'},inplace=True)
+
+    #SUMS to combine individual account numbers for total iso fee
+    cols.remove('ACCOUNT_NUMBER')
+    afdf_totals = afdf_sums.groupby(cols)['FLAT_FEES_ISOLATED'].sum().reset_index()
+
+    accts_for_af = afdf_sums['ACCOUNT_NUMBER'].unique().tolist()
 
     #Have to leave as tmp to account for groupby and join on nulls
     aep_data.fillna('tmp',inplace=True)
@@ -33,13 +52,39 @@ def get_transforms(extract_dict):
     all_w_aep = acct_data.merge(final.rename(columns={'AMOUNT':'AEP_ADJUSTED'}), on=['COMPASS_DEALS_ID','COMPASS_TEAM_ID','ENDING_PERIOD','MARKET_REGION','SIDE_REPRESENTED','LISTING_TYPE'], how='outer')
     all_w_aep.loc[all_w_aep['AEP_ADJUSTED'].notnull(), 'COMMISSION_EXPENSE'] = all_w_aep['COMMISSION_EXPENSE'] - all_w_aep['AEP_ADJUSTED']
 
+    all_w_aep_af = all_w_aep.merge(afdf_sums, on=['COMPASS_DEALS_ID','COMPASS_TEAM_ID','ENDING_PERIOD','MARKET_REGION','LOCATION_NAME','SIDE_REPRESENTED','LISTING_TYPE','DEPARTMENT_NAME'], how='left')
+
+    all_w_aep_af_cols = all_w_aep_af.columns.tolist()
+
+    for each in accts_for_af:
+        col_to_adjust = [i for i in all_w_aep_af_cols if each in i]
+        if not col_to_adjust:
+            print('Cannot find accompany account number column for: ' + str(each))
+        else:
+            col_to_adjust = col_to_adjust[0]
+            all_w_aep_af.loc[(all_w_aep_af['ACCOUNT_NUMBER']==each) & (all_w_aep_af['FLAT_FEES_ISOLATED'].notnull()), col_to_adjust] = all_w_aep_af[col_to_adjust] - all_w_aep_af['FLAT_FEES_ISOLATED']
+
+    all_w_aep_af.drop(columns={'ACCOUNT_NUMBER','FLAT_FEES_ISOLATED'},axis=1,inplace=True)
+
+    all_w_aep_af = all_w_aep_af.merge(afdf_totals, on=['COMPASS_DEALS_ID','COMPASS_TEAM_ID','ENDING_PERIOD','MARKET_REGION','LOCATION_NAME','SIDE_REPRESENTED','LISTING_TYPE','DEPARTMENT_NAME'], how='outer')
+
+    all_w_aep_af['ANCILLARY_REVENUE__FLAT_FEES_430011'] = all_w_aep_af['ANCILLARY_REVENUE__FLAT_FEES_430011'] + all_w_aep_af['FLAT_FEES_ISOLATED']
+
     #Join in ICA data
     ica_redux = ica_data[ica_data['Compass Team ID'].notnull()][['Compass Team ID',
                                                                    'Account Team Name',
                                                                    'Original Start Date',
                                                                    'Market',
                                                                    'Separation Date',
-                                                                   'Number of Agents']].copy()
+                                                                   'Number of Agents',
+                                                                   'Total Split',
+                                                                   'Base Split',
+                                                                   	"Resource Fee Type", 
+                                                                    "Resource Fee Option" , 
+                                                                    "Resource Fee %",
+                                                                    "Resource Fee Cap",
+                                                                    "Actual Resource Fee % or #",
+                                                                    "Policy Resource Fee % or #"]].copy()
 
     detail_df = ica_redux.merge(all_w_aep, left_on=['Compass Team ID'], right_on='COMPASS_TEAM_ID',how='right')
 
@@ -51,6 +96,9 @@ def get_transforms(extract_dict):
     detail_df['AEP_TOTAL'] = detail_df['AEP'] + detail_df['AEP_ADJUSTED']
     detail_df['NCD_and_AEP_TOTAL'] = detail_df['NET_COMPANY_DOLLAR'] + detail_df['AEP_TOTAL']
     detail_df['ENDING_YEAR'] = detail_df['ENDING_PERIOD'].dt.year.astype(str)
+    
+    #ADD IN ADMIN/RESOURCE FEE SPLIT (430003/GCI LR) and Total NCD + Admin Fee
+
 
     #FILL NA 'tmp' for STRING COLS ELSE 0 if boolean, integer, unicode, float, and complex
     detail_df = detail_df.apply(lambda x: x.fillna(0) if x.dtype.kind in 'biufc' else x.fillna('tmp'))
