@@ -51,7 +51,9 @@ def get_acct_transaction_data(begin_date, end_date):
 	Ancillary_Revenue__Contract_to_Close_430002,
 	Ancillary_Revenue__E_and_O_Billing_Income_430006,
 	Ancillary_Revenue__Discounted_Vendor_Service_Program_430009,
-	Ancillary_Revenue__Flat_Fees_430011
+	Ancillary_Revenue__Flat_Fees_430011,
+	Vendor_Salesforce_Agent_ID,
+	Company_Salesforce_Agent_ID
 	From
 	(select CASE WHEN a.Market_Region='Texas' THEN SPLIT_PART(a.Location_Name,',',0) ELSE a.Market_Region END as Market_Region,
 	a.Side_Represented,
@@ -60,6 +62,8 @@ def get_acct_transaction_data(begin_date, end_date):
 	a.Location_Name,
 	a.Department_Name,
 	a.Compass_Team_ID,
+	a.Vendor_Salesforce_Agent_ID,
+	a.Company_Salesforce_Agent_ID,
 	a.Close_Date,
 	a.Ending_Period,
 	a.Final_Close_Price,
@@ -128,7 +132,9 @@ def get_acct_transaction_data(begin_date, end_date):
 	a.Department_Name,
 	a.Ending_Period,
 	a.Close_Date,
-	a.Final_Close_Price) tb1
+	a.Final_Close_Price,
+	a.Vendor_Salesforce_Agent_ID,
+	a.Company_Salesforce_Agent_ID) tb1
 	Group by tb1.Market_Region,
 	tb1.Side_Represented,
 	tb1.Compass_Deals_Id,
@@ -173,7 +179,9 @@ def get_acct_transaction_data(begin_date, end_date):
 	Ancillary_Revenue__Contract_to_Close_430002,
 	Ancillary_Revenue__E_and_O_Billing_Income_430006,
 	Ancillary_Revenue__Discounted_Vendor_Service_Program_430009,
-	Ancillary_Revenue__Flat_Fees_430011;""".format(b=begin_date,e=end_date))
+	Ancillary_Revenue__Flat_Fees_430011,
+	Vendor_Salesforce_Agent_ID,
+	Company_Salesforce_Agent_ID;""".format(b=begin_date,e=end_date))
 	print('finish...' + str(dt.now()))
 
 	return full_query
@@ -277,7 +285,10 @@ def get_ica_data():
 		"Resource Fee %",
 		"Resource Fee Cap",
 		"Actual Resource Fee % or #",
-		"Policy Resource Fee % or #"
+		"Policy Resource Fee % or #",
+		"AMA ID",
+		"Salesforce Contact ID",
+		"Salesforce Account ID"
 	FROM
 	"PC_STITCH_DB"."ET_DEVELOPMENT"."VIEW_AGENT_ICA_HISTORY"
 	WHERE
