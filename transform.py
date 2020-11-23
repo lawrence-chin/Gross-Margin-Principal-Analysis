@@ -220,7 +220,11 @@ def get_transforms(extract_dict):
     detail_df = detail_df.replace("tmp",np.nan)
 
     detail_df['AGENT_SPLIT'].fillna(0, inplace=True)
+    detail_df['AGENT_SPLIT'].replace(np.inf, 0,inplace=True)
+    detail_df['AGENT_SPLIT'].replace(-np.inf, 0,inplace=True)
     detail_df['COMPANY_SPLIT'].fillna(0, inplace=True)
+    detail_df['COMPANY_SPLIT'].replace(np.inf, 0,inplace=True)
+    detail_df['COMPANY_SPLIT'].replace(-np.inf, 0,inplace=True)
 
     return {
         'deal_data' : detail_df,

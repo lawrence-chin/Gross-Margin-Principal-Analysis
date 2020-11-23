@@ -9,10 +9,10 @@ def load_data(output_dict):
 
     today = str(dt.now().date())
 
-    deal_data.to_csv(filepath + 'GMA_Deal_Data_' + today + '.csv')
+    deal_data.to_csv(filepath + 'GMA_Deal_Data_' + today + '.csv',index=False)
 
-    principal_data.to_csv(filepath + 'GMA_Principal_Data_' + today + '.csv')
+    principal_data.to_csv(filepath + 'GMA_Principal_Data_' + today + '.csv', index=False)
 
-    principal_max_data.to_csv(filepath + 'GMA_Cohort_Data_' + today + '.csv')
+    principal_max_data.to_csv(filepath + 'GMA_Cohort_Data_' + today + '.csv', index=False)
 
     print('All Outputted!')
